@@ -1,0 +1,59 @@
+#!/bin/bash
+
+
+# installation de MariaDB
+apt -y install mariadb-server mariadb-client
+mysql_secure_installation
+mysql -u root -e "UPDATE mysql.user SET PLUGIN='mysql_native_password' WHERE user='root';"
+mysql -u root -e "FLUSH PRIVILEGES;"
+
+# installation Apache 2
+apt -y install apache2
+
+# installation PHP 7
+apt -y install php7.0 libapache2-mod-php7.0
+systemctl restart apache2
+chown -R www-data:www-data /var/www/html
+
+# modules additionnels PHP 7
+apt -y install php7.0-mysql php7.0-curl php7.0-gd php7.0-intl php7.0-mbstring php-imagick
+apt -y install php7.0-imap php7.0-mcrypt php-memcache php7.0-pspell php7.0-recode
+apt -y install php7.0-tidy php7.0-xml php7.0-xmlrpc php7.0-xsl php-gettext
+systemctl restart apache2
+
+# caches PHP
+apt -y install php7.0-opcache php-apcu
+systemctl restart apache2
+
+# mise en service du site SSL
+a2enmod ssl
+a2ensite default-ssl
+service apache2 restart
+
+# installation certificat Let's Encrypt
+apt -y install python-letsencrypt-apache
+sed -i "s/#ServerName.*$/ServerName blog.konfidenca.net/" /etc/apache2/sites-available/000-default.conf
+letsencrypt --apache -d example.com
+    # renseigner les questions demandées
+
+# renouvellement automatique let's encrypt
+crontab -e
+    # insérer à la fin :      0 1 * * * /usr/bin/letsencrypt renew &> /dev/null
+
+# création de la base de données et de l'utilisateur pour Wordpress
+mysql -u root -p -e "CREATE DATABASE konfidenca DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci;"
+mysql -u root -p -e "GRANT ALL ON konfidenca.* TO 'konf_usr'@'localhost' IDENTIFIED BY 'password';"
+mysql -u root -p -e "FLUSH PRIVILEGES;"
+
+# autorisation des fichiers .htaccess
+#         insérer :		<Directory /var/www/html/>
+#				  AllowOverride All
+#				</Directory>
+#	  à la fin de /etc/apache2/apache2.conf
+
+# chargement du module rewrite
+a2enmod rewrite
+service apache2 restart
+
+
+
