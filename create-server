@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# sourçage des credentials
+source /home/stef/konfidenca.net.creds
+
+# vérification et récupération des arguments (<servername> <IP address>)
+if [ -z $1 ];then
+  echo
+  read -p "Nom du serveur : " host
+else
+  host=$1
+fi
+
+if [ -z $2 ];then
+  echo
+  read -p "Région : " region
+else
+  region=$2
+fi
+
+if [ -z $3 ]; then
+  echo
+  read -p "Adresse IP : " IP
+else
+  IP=$3
+fi
+
+# sélection de la région
+export OS_REGION_NAME=$region
+
+# Inscription de l'IP dans le script de post-install
+sed -i "s/IP='.*'/IP='$IP'/" postinstall.sh
+
+# création de l'instance avec association à Ext-Net
+nova boot --key-name stef-desktop \
+          --image "Ubuntu 16.04" \
+          --flavor s1-2 \
+          --nic net-name=Ext-Net \
+          --user-data postinstall.sh \
+          --poll $host
+
+# association au vRack
+echo
+echo "Association au vRack à l'addresse $IP sur konfidenca.net ..."
+echo
+networkId="f9e86f9a-f376-4678-b103-6c00fb740a45"
+nova interface-attach --net-id $networkId --fixed-ip $IP $host
+
+echo
+echo "En attente redémarrage serveur."
+sleep 15
+echo "Demande de redémarrage hard du serveur."
+nova reboot --hard --poll $host
+
+echo
+echo "Nettoyage de known-hosts ..."
+ssh-keygen -R $host
+
+echo
+exit 0
+
