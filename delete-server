@@ -1,0 +1,30 @@
+#!/bin/bash
+
+if [ -z $1 ]; then
+  read -p "Nom du serveur : " host
+else
+  host=$1
+fi
+
+if [ -z $2 ]; then
+  read -p "Région : " region
+else
+  region=$2
+fi
+
+export OS_REGION_NAME=$region
+
+echo
+echo "Suppression du serveur $host."
+
+nova delete $host
+
+ssh-keygen -R $host
+
+echo
+echo "Attente suppression serveur..."
+sleep 20
+
+echo
+exit 0
+

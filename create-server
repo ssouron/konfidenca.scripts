@@ -3,7 +3,7 @@
 # sourçage des credentials
 source /home/stef/konfidenca.net.creds
 
-# vérification et récupération des arguments (<servername> <IP address>)
+# vérification et récupération des arguments (<servername> <region> <IP address> <flavor>)
 if [ -z $1 ];then
   echo
   read -p "Nom du serveur : " host
@@ -25,6 +25,13 @@ else
   IP=$3
 fi
 
+if [ -z $4 ]; then
+  echo
+  read -p "Type de serveur : " flavor
+else
+  flavor=$4
+fi
+
 # sélection de la région
 export OS_REGION_NAME=$region
 
@@ -34,7 +41,7 @@ sed -i "s/IP='.*'/IP='$IP'/" postinstall.sh
 # création de l'instance avec association à Ext-Net
 nova boot --key-name stef-desktop \
           --image "Ubuntu 16.04" \
-          --flavor s1-2 \
+          --flavor $flavor \
           --nic net-name=Ext-Net \
           --user-data postinstall.sh \
           --poll $host
@@ -46,6 +53,7 @@ echo
 networkId="f9e86f9a-f376-4678-b103-6c00fb740a45"
 nova interface-attach --net-id $networkId --fixed-ip $IP $host
 
+# redémarrage du serveur
 echo
 echo "En attente redémarrage serveur."
 sleep 15
